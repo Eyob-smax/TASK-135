@@ -31,14 +31,29 @@ WORKDIR /app
 
 # Install Python dependencies first (layer-cached unless requirements change)
 COPY requirements.txt requirements-dev.txt ./
-RUN python -m pip install --no-cache-dir -r requirements-dev.txt
-RUN python -m pip install --no-cache-dir "setuptools>=68" wheel
+RUN set -eux; \
+    for attempt in 1 2 3; do \
+        python -m pip install --no-cache-dir -r requirements-dev.txt && break; \
+        if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+        echo "pip install failed on attempt $attempt; retrying..." >&2; \
+    done
+RUN set -eux; \
+    for attempt in 1 2 3; do \
+        python -m pip install --no-cache-dir "setuptools>=68" wheel && break; \
+        if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+        echo "pip install failed on attempt $attempt; retrying..." >&2; \
+    done
 
 # Copy application source
 COPY . .
 
 # Install the district_console package in editable mode (src layout)
-RUN python -m pip install --no-cache-dir -e .
+RUN set -eux; \
+    for attempt in 1 2 3; do \
+        python -m pip install --no-cache-dir -e . && break; \
+        if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+        echo "pip install failed on attempt $attempt; retrying..." >&2; \
+    done
 
 # Use Qt offscreen platform for headless test environments
 ENV QT_QPA_PLATFORM=offscreen
