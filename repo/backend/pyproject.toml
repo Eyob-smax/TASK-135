@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "district-console"
+version = "0.1.0"
+description = "District Resource & Inventory Operations Console for K-12 organizations"
+requires-python = ">=3.10,<3.11"
+readme = "README.md"
+license = { text = "Proprietary" }
+
+dependencies = [
+    "PyQt6>=6.6",
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "argon2-cffi>=23.1",
+    "apscheduler>=3.10",
+    "pydantic>=2.5",
+    "httpx>=0.26",
+    "aiofiles>=23.1",
+    "aiosqlite>=0.20",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "pytest-qt>=4.3",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.26",
+]
+
+[project.scripts]
+district-console = "district_console.bootstrap.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["unit_tests", "api_tests"]
+addopts = "--cov=district_console --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["district_console"]
+branch = true
+omit = [
+    "*/unit_tests/*",
+    "*/api_tests/*",
+    "*/tests/*",
+    "*/packaging/*",
+]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

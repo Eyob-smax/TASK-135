@@ -1,0 +1,62 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Native extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.whl
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# Type checker / lint caches
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# Logs and temp
+*.log
+
+# IDE/editor
+.vscode/
+.idea/
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local environment files
+.env
+.env.*
+*.local
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Runtime data (keep migrations/snapshots in source tree)
+*.sqlite
+*.sqlite3
+*.db

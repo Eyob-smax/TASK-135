@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  District Resource & Inventory Operations Console — WiX Installer Source
+
+  Variables (passed via wix build -d flags or environment):
+    ProductVersion  — e.g. "1.0.0"
+    SourceDir       — path to the PyInstaller dist/district-console directory
+
+  Build (WiX v4):
+    wix build district-console.wxs -d ProductVersion=1.0.0 -d SourceDir=..\dist\district-console
+
+  Prerequisites:
+    - PyInstaller one-dir build in dist\district-console\
+    - Application icon at src\district_console\ui\resources\icon.ico
+    - WiX Toolset v4 installed (https://wixtoolset.org/)
+    - Code-signing certificate for signtool.exe (post-build step)
+
+  Post-build signing (run after wix build):
+    signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a district-console.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package
+    Name="District Resource &amp; Inventory Operations Console"
+    Manufacturer="District Console Project"
+    Version="$(ProductVersion)"
+    UpgradeCode="A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
+    Language="1033"
+    Codepage="1252"
+    InstallerVersion="500"
+    Compressed="yes"
+    Scope="perMachine">
+
+    <!-- Enforce single installed instance; remove older versions on upgrade -->
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+      Schedule="afterInstallInitialize" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ================================================================
+         Directory structure
+         ================================================================ -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="MANUFACTURERDIR" Name="District Console">
+        <Directory Id="INSTALLDIR" Name="District Resource Console">
+          <Directory Id="DATADIR" Name="data" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="STARTMENUFOLDER" Name="District Resource Console" />
+    </StandardDirectory>
+
+    <!-- ================================================================
+         Component: Main executable and application files
+         ================================================================ -->
+    <ComponentGroup Id="ApplicationFiles" Directory="INSTALLDIR">
+
+      <Component Id="MainExecutable" Guid="B1C2D3E4-F5A6-7890-BCDE-F12345678901">
+        <File
+          Id="DistrictConsoleExe"
+          Source="$(SourceDir)\district-console.exe"
+          KeyPath="yes" />
+      </Component>
+
+      <!-- Internal libraries directory harvested from PyInstaller output.
+           Replace with heat.exe / wix harvest output for production builds. -->
+      <Component Id="AppDataDir" Guid="C2D3E4F5-A6B7-8901-CDEF-012345678902">
+        <CreateFolder Directory="DATADIR" />
+        <RemoveFolder Id="DataDirCleanup" Directory="DATADIR" On="uninstall" />
+        <RegistryValue
+          Root="HKLM"
+          Key="Software\DistrictConsole"
+          Name="DataDir"
+          Type="string"
+          Value="[DATADIR]"
+          KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- ================================================================
+         Component: Start Menu shortcut
+         ================================================================ -->
+    <ComponentGroup Id="Shortcuts" Directory="STARTMENUFOLDER">
+
+      <Component Id="StartMenuShortcut" Guid="D3E4F5A6-B7C8-9012-DEF0-123456789003">
+        <Shortcut
+          Id="AppStartMenuShortcut"
+          Name="District Resource Console"
+          Description="District Resource &amp; Inventory Operations Console"
+          Target="[INSTALLDIR]district-console.exe"
+          WorkingDirectory="INSTALLDIR"
+          Icon="AppIcon" />
+        <RemoveFolder Id="StartMenuFolderCleanup" Directory="STARTMENUFOLDER" On="uninstall" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\DistrictConsole\StartMenu"
+          Name="installed"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- ================================================================
+         Feature: Full install (single-feature MSI)
+         ================================================================ -->
+    <Feature Id="ProductFeature" Title="District Resource Console" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles" />
+      <ComponentGroupRef Id="Shortcuts" />
+    </Feature>
+
+    <!-- ================================================================
+         Icon reference for shortcuts and Add/Remove Programs entry
+         ================================================================ -->
+    <Icon Id="AppIcon" SourceFile="..\backend\src\district_console\ui\resources\icon.ico" />
+
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+
+    <!-- ================================================================
+         UI: Minimal wizard (WixUI_Minimal built-in dialog set)
+         ================================================================ -->
+    <UIRef Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="LICENSE.rtf" />
+
+  </Package>
+
+</Wix>

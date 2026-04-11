@@ -1,0 +1,54 @@
+
+
+# District Resource & Inventory Operations Console
+# All services are local-only. No internet access is used or required.
+# Port 8765 is the embedded FastAPI local REST service.
+
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - ./backend:/app
+      - district_data:/app/data
+    environment:
+      - DC_DB_PATH=/app/data/district.db
+      - DC_API_HOST=127.0.0.1
+      - DC_API_PORT=8765
+      - DC_LOG_LEVEL=INFO
+      - DC_KEY_ENCRYPTION_KEY=${DC_KEY_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - QT_QPA_PLATFORM=offscreen
+    command: ["python", "-m", "district_console.bootstrap"]
+    restart: unless-stopped
+
+  test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app
+    environment:
+      - DC_DB_PATH=/tmp/test_district.db
+      - DC_API_HOST=127.0.0.1
+      - DC_API_PORT=8765
+      - DC_LOG_LEVEL=WARNING
+      - DC_KEY_ENCRYPTION_KEY=${DC_KEY_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - QT_QPA_PLATFORM=offscreen
+      - PYTHONPATH=/app/src
+    command:
+      - python
+      - -m
+      - pytest
+      - unit_tests/
+      - api_tests/
+      - --cov=district_console
+      - --cov-report=term-missing
+      - --cov-fail-under=90
+      - -v
+
+volumes:
+  district_data:
+    driver: local
