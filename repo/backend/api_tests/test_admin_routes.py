@@ -19,6 +19,7 @@ async def test_list_audit_events_requires_auth(http_client):
 async def test_list_audit_events_without_admin_returns_403(http_client, librarian_headers):
     resp = await http_client.get("/api/v1/admin/audit/events/", headers=librarian_headers)
     assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_PERMISSION"
 
 
 async def test_list_audit_events_with_admin_returns_200(http_client, admin_headers):
@@ -35,6 +36,12 @@ async def test_list_security_events_with_admin_returns_200(http_client, admin_he
 
 async def test_list_checkpoints_with_admin_returns_200(http_client, admin_headers):
     resp = await http_client.get("/api/v1/admin/audit/checkpoints/", headers=admin_headers)
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+async def test_list_approval_queue_with_admin_returns_200(http_client, admin_headers):
+    resp = await http_client.get("/api/v1/admin/audit/approval-queue/", headers=admin_headers)
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 

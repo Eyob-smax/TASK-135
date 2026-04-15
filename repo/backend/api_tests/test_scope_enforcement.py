@@ -1011,6 +1011,85 @@ async def test_request_allocation_denied_for_different_scope_user(
     assert resp.json()["error"]["code"] == "SCOPE_VIOLATION"
 
 
+async def _ensure_role_has_permission(db_session, role_id: str, permission_name: str) -> None:
+    perm_result = await db_session.execute(
+        select(PermissionORM).where(PermissionORM.name == permission_name)
+    )
+    perm = perm_result.scalar_one_or_none()
+    assert perm is not None
+    existing = await db_session.execute(
+        select(RolePermissionORM).where(
+            RolePermissionORM.role_id == role_id,
+            RolePermissionORM.permission_id == perm.id,
+        )
+    )
+    if existing.scalar_one_or_none() is None:
+        db_session.add(RolePermissionORM(role_id=role_id, permission_id=perm.id))
+        await db_session.flush()
+
+
+async def test_resource_mutations_with_matching_scope_are_allowed(
+    db_session,
+    http_client,
+    seeded_roles,
+    sample_password,
+    seeded_user_orm,
+):
+    school_a, _, _ = await _create_school_with_warehouse_and_location(db_session, "MUT-OK")
+    resource = await _create_scoped_resource(db_session, seeded_user_orm.id, school_a.id)
+
+    reviewer_role = seeded_roles["REVIEWER"]
+    await _ensure_role_has_permission(db_session, reviewer_role.id, "resources.view")
+    await _ensure_role_has_permission(db_session, reviewer_role.id, "resources.submit_review")
+    await _ensure_role_has_permission(db_session, reviewer_role.id, "resources.publish")
+    await _ensure_role_has_permission(db_session, reviewer_role.id, "resources.classify")
+
+    headers_a = await _create_user_with_role_and_scope(
+        db_session,
+        http_client,
+        username="resource_scope_ok_user",
+        password=sample_password,
+        role_orm=reviewer_role,
+        seeded_user_orm=seeded_user_orm,
+        scope_type="SCHOOL",
+        scope_ref_id=school_a.id,
+    )
+
+    submit_resp = await http_client.post(
+        f"/api/v1/resources/{resource.id}/submit-review",
+        headers=headers_a,
+        json={"reviewer_id": seeded_user_orm.id},
+    )
+    assert submit_resp.status_code == 200
+
+    publish_resp = await http_client.post(
+        f"/api/v1/resources/{resource.id}/publish",
+        headers=headers_a,
+        json={"reviewer_notes": "Scope-matching publish"},
+    )
+    assert publish_resp.status_code == 200
+
+    classify_resp = await http_client.post(
+        f"/api/v1/resources/{resource.id}/classify",
+        headers=headers_a,
+        json={"min_age": 7, "max_age": 12, "timeliness_type": "EVERGREEN"},
+    )
+    assert classify_resp.status_code == 204
+
+    allocation_resp = await http_client.post(
+        f"/api/v1/resources/{resource.id}/request-allocation",
+        headers=headers_a,
+    )
+    assert allocation_resp.status_code == 204
+
+    unpublish_resp = await http_client.post(
+        f"/api/v1/resources/{resource.id}/unpublish",
+        headers=headers_a,
+        json={"reviewer_notes": "Scope-matching unpublish"},
+    )
+    assert unpublish_resp.status_code == 200
+
+
 async def test_scope_type_collision_does_not_leak_resource(
     db_session,
     http_client,

@@ -5,6 +5,10 @@ All routes require admin.manage_config permission except GET routes
 which require any authenticated user.
 
 Prefix: /api/v1/admin/config
+
+ROUTE ORDERING NOTE: The general PUT /{category}/{key} is registered LAST so
+that the more specific PUT /templates/{name} and PUT /descriptors/{key} routes
+are matched first by FastAPI's path router.
 """
 from __future__ import annotations
 
@@ -38,7 +42,7 @@ router = APIRouter()
 
 
 # ---------------------------------------------------------------------------
-# ConfigDictionary
+# ConfigDictionary — list and delete
 # ---------------------------------------------------------------------------
 
 @router.get(
@@ -60,27 +64,6 @@ async def list_config(
         offset=offset,
         limit=limit,
     )
-
-
-@router.put(
-    "/{category}/{key}",
-    response_model=ConfigDictionaryResponse,
-    status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_permission("admin.manage_config"))],
-)
-async def upsert_config(
-    category: str,
-    key: str,
-    body: ConfigUpsertRequest,
-    current_user: Annotated[tuple, Depends(get_current_user)],
-    session: AsyncSession = Depends(get_db_session),
-    svc=Depends(get_config_service),
-):
-    actor_id, _ = current_user
-    entry = await svc.upsert_config(
-        session, category, key, body.value, body.description, actor_id, datetime.utcnow()
-    )
-    return _config_resp(entry)
 
 
 @router.delete(
@@ -162,7 +145,7 @@ async def delete_workflow_node(
 
 
 # ---------------------------------------------------------------------------
-# NotificationTemplate
+# NotificationTemplate — registered before general PUT /{category}/{key}
 # ---------------------------------------------------------------------------
 
 @router.get(
@@ -203,7 +186,7 @@ async def upsert_template(
 
 
 # ---------------------------------------------------------------------------
-# DistrictDescriptor
+# DistrictDescriptor — registered before general PUT /{category}/{key}
 # ---------------------------------------------------------------------------
 
 @router.get(
@@ -234,6 +217,31 @@ async def upsert_descriptor(
         session, key, body.value, body.description, body.region, current_user[0], datetime.utcnow()
     )
     return _descriptor_resp(desc)
+
+
+# ---------------------------------------------------------------------------
+# ConfigDictionary — general PUT registered last to avoid shadowing specific routes above
+# ---------------------------------------------------------------------------
+
+@router.put(
+    "/{category}/{key}",
+    response_model=ConfigDictionaryResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_permission("admin.manage_config"))],
+)
+async def upsert_config(
+    category: str,
+    key: str,
+    body: ConfigUpsertRequest,
+    current_user: Annotated[tuple, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_db_session),
+    svc=Depends(get_config_service),
+):
+    actor_id, _ = current_user
+    entry = await svc.upsert_config(
+        session, category, key, body.value, body.description, actor_id, datetime.utcnow()
+    )
+    return _config_resp(entry)
 
 
 # ---------------------------------------------------------------------------

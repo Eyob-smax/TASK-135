@@ -270,3 +270,42 @@ async def admin_headers(db_session, http_client, seeded_roles, sample_password, 
         db_session, http_client, "admin_user", sample_password,
         seeded_roles["ADMINISTRATOR"], seeded_user_orm,
     )
+
+
+@pytest.fixture
+async def real_http_url(test_app):
+    """
+    Start the FastAPI test app on a real TCP port using uvicorn as an asyncio
+    task within the same event loop.  Yields the base URL string.
+
+    This lets tests exercise the full HTTP stack (real socket, real TCP
+    transport, no ASGI short-circuit) without cross-loop SQLAlchemy issues.
+    """
+    import asyncio
+    import socket
+
+    import uvicorn
+
+    # Pick a random free port on the loopback interface
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    config = uvicorn.Config(
+        test_app,
+        host="127.0.0.1",
+        port=port,
+        log_level="warning",
+        loop="none",  # reuse the running asyncio loop managed by pytest-asyncio
+    )
+    server = uvicorn.Server(config)
+    task = asyncio.create_task(server.serve())
+
+    # Wait for the server to signal it is ready
+    while not server.started:
+        await asyncio.sleep(0.05)
+
+    yield f"http://127.0.0.1:{port}"
+
+    server.should_exit = True
+    await task

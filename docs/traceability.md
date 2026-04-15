@@ -243,6 +243,7 @@ Test files live under `repo/backend/unit_tests/` and `repo/backend/api_tests/`.
 | PUT /admin/config/ requires admin.manage_config | `api_tests/test_config_routes.py :: test_upsert_requires_admin_permission` |
 | PUT /admin/config/ with admin creates/updates | `api_tests/test_config_routes.py :: test_upsert_with_admin_returns_200` |
 | PUT /admin/config/ with empty value returns 422 | `api_tests/test_config_routes.py :: test_upsert_empty_value_returns_422` |
+| DELETE /admin/config/{entry_id} with admin returns 204 | `api_tests/test_config_routes.py :: test_delete_config_with_admin_returns_204` |
 
 ### Taxonomy
 
@@ -308,6 +309,8 @@ Test files live under `repo/backend/unit_tests/` and `repo/backend/api_tests/`.
 | POST /admin/updates/import with valid ZIP creates PENDING | `api_tests/test_update_routes.py :: test_import_with_admin_creates_pending` |
 | POST /admin/updates/import invalid ZIP returns 422 | `api_tests/test_update_routes.py :: test_import_invalid_zip_returns_422` |
 | POST /admin/updates/{id}/apply transitions to APPLIED | `api_tests/test_update_routes.py :: test_apply_transitions_to_applied` |
+| POST /admin/updates/{id}/rollback restores prior applied version | `api_tests/test_update_routes.py :: test_rollback_package_restores_prior_version` |
+| POST /admin/updates/{id}/rollback without prior returns 409 | `api_tests/test_update_routes.py :: test_rollback_package_without_prior_returns_409` |
 
 ### Audit Log
 
@@ -318,6 +321,7 @@ Test files live under `repo/backend/unit_tests/` and `repo/backend/api_tests/`.
 | list_checkpoint_status excludes COMPLETED | `unit_tests/application/test_audit_service.py :: test_checkpoint_status_excludes_completed` |
 | GET /admin/audit/events/ requires admin | `api_tests/test_admin_routes.py :: test_list_audit_events_without_admin_returns_403` |
 | GET /admin/audit/events/ with admin returns items list | `api_tests/test_admin_routes.py :: test_list_audit_events_with_admin_returns_200` |
+| GET /admin/audit/approval-queue/ with admin returns 200 list | `api_tests/test_admin_routes.py :: test_list_approval_queue_with_admin_returns_200` |
 | GET /admin/audit/events/security/ returns 200 | `api_tests/test_admin_routes.py :: test_list_security_events_with_admin_returns_200` |
 | GET /admin/audit/checkpoints/ returns list | `api_tests/test_admin_routes.py :: test_list_checkpoints_with_admin_returns_200` |
 

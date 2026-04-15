@@ -56,6 +56,8 @@ omit = [
     "*/api_tests/*",
     "*/tests/*",
     "*/packaging/*",
+    "*/ui/*",
+    "src/district_console/ui/*",
 ]
 
 [tool.coverage.report]

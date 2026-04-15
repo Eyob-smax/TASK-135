@@ -2,9 +2,10 @@
 # run_tests.sh — Docker-first test runner for District Console
 #
 # Usage:
-#   ./run_tests.sh                     Run full backend suite (unit + API)
-#   ./run_tests.sh unit                Run backend unit tests only
+#   ./run_tests.sh                     Run default backend suite (unit + API; excludes UI)
+#   ./run_tests.sh unit                Run backend unit tests only (excludes UI)
 #   ./run_tests.sh api                 Run only api_tests/
+#   ./run_tests.sh ui                  Run only UI widget tests
 #   ./run_tests.sh -k "test_auth"      Pass extra pytest args (forwarded to container)
 #   ./run_tests.sh --cov               Enable coverage reporting (+90% gate)
 #
@@ -49,7 +50,7 @@ fi
 
 PYTEST_ARGS=()
 SUITE_FILTER=""
-ENABLE_COV=false
+ENABLE_COV=true
 
 for arg in "$@"; do
     case "$arg" in
@@ -58,6 +59,9 @@ for arg in "$@"; do
             ;;
         api)
             SUITE_FILTER="api"
+            ;;
+        ui)
+            SUITE_FILTER="ui"
             ;;
         --cov)
             ENABLE_COV=true
@@ -79,12 +83,15 @@ BACKEND_UNIT_PATHS=(
     "unit_tests/infrastructure/"
     "unit_tests/test_package_imports.py"
 )
+UI_TEST_PATHS=("unit_tests/ui/")
 
 TEST_PATHS=("${BACKEND_UNIT_PATHS[@]}" "api_tests/")
 if [[ "$SUITE_FILTER" == "unit" ]]; then
     TEST_PATHS=("${BACKEND_UNIT_PATHS[@]}")
 elif [[ "$SUITE_FILTER" == "api" ]]; then
     TEST_PATHS=("api_tests/")
+elif [[ "$SUITE_FILTER" == "ui" ]]; then
+    TEST_PATHS=("${UI_TEST_PATHS[@]}")
 fi
 
 PYTEST_CMD=(python -m pytest)
