@@ -195,3 +195,65 @@ async def test_apply_package_extra_unlisted_member_returns_422(http_client, admi
         f"/api/v1/admin/updates/{pkg_id}/apply", headers=admin_headers
     )
     assert apply_resp.status_code == 422
+
+
+async def test_rollback_package_restores_prior_version(http_client, admin_headers):
+    import_v1 = await http_client.post(
+        "/api/v1/admin/updates/import",
+        files={"file": ("v1.0.0.zip", _make_zip_bytes("1.0.0"), "application/zip")},
+        headers=admin_headers,
+    )
+    assert import_v1.status_code == 201
+    v1_id = import_v1.json()["package_id"]
+
+    apply_v1 = await http_client.post(
+        f"/api/v1/admin/updates/{v1_id}/apply",
+        headers=admin_headers,
+    )
+    assert apply_v1.status_code == 200
+
+    import_v2 = await http_client.post(
+        "/api/v1/admin/updates/import",
+        files={"file": ("v2.0.0.zip", _make_zip_bytes("2.0.0"), "application/zip")},
+        headers=admin_headers,
+    )
+    assert import_v2.status_code == 201
+    v2_id = import_v2.json()["package_id"]
+
+    apply_v2 = await http_client.post(
+        f"/api/v1/admin/updates/{v2_id}/apply",
+        headers=admin_headers,
+    )
+    assert apply_v2.status_code == 200
+
+    rollback_resp = await http_client.post(
+        f"/api/v1/admin/updates/{v2_id}/rollback",
+        headers=admin_headers,
+    )
+    assert rollback_resp.status_code == 200
+    body = rollback_resp.json()
+    assert body["version"] == "1.0.0"
+    assert body["status"] == "APPLIED"
+
+
+async def test_rollback_package_without_prior_returns_409(http_client, admin_headers):
+    import_resp = await http_client.post(
+        "/api/v1/admin/updates/import",
+        files={"file": ("v8.0.0.zip", _make_zip_bytes("8.0.0"), "application/zip")},
+        headers=admin_headers,
+    )
+    assert import_resp.status_code == 201
+    pkg_id = import_resp.json()["package_id"]
+
+    apply_resp = await http_client.post(
+        f"/api/v1/admin/updates/{pkg_id}/apply",
+        headers=admin_headers,
+    )
+    assert apply_resp.status_code == 200
+
+    rollback_resp = await http_client.post(
+        f"/api/v1/admin/updates/{pkg_id}/rollback",
+        headers=admin_headers,
+    )
+    assert rollback_resp.status_code == 409
+    assert rollback_resp.json()["detail"]["code"] == "ROLLBACK_NOT_POSSIBLE"

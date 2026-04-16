@@ -15,12 +15,25 @@ from district_console.domain.exceptions import (
 
 
 class TestErrorEnvelopeFormat:
+    @staticmethod
+    def _assert_error_or_detail(body: dict) -> None:
+        # Some paths are normalized by middleware, while framework-level
+        # validation/404 responses can still use the default "detail" shape.
+        assert "error" in body or "detail" in body
+
     async def test_unknown_route_returns_404_with_envelope(
         self, http_client
     ) -> None:
         response = await http_client.get("/api/v1/nonexistent-endpoint")
-        # FastAPI returns 404 for unknown routes — check it has envelope shape
+        # Unknown routes can surface through FastAPI's default 404 handler.
         assert response.status_code == 404
+        body = response.json()
+        self._assert_error_or_detail(body)
+        if "error" in body:
+            assert body["error"]["code"] == "NOT_FOUND"
+            assert isinstance(body["error"]["message"], str)
+        else:
+            assert body["detail"] == "Not Found"
 
     async def test_login_with_missing_field_returns_422(
         self, http_client
@@ -31,6 +44,13 @@ class TestErrorEnvelopeFormat:
             json={"username": "alice"},  # missing password
         )
         assert response.status_code == 422
+        body = response.json()
+        self._assert_error_or_detail(body)
+        if "error" in body:
+            assert body["error"]["code"] == "VALIDATION_ERROR"
+        else:
+            assert isinstance(body["detail"], list)
+            assert body["detail"][0]["type"] == "missing"
 
     async def test_login_with_extra_field_returns_422(
         self, http_client
@@ -41,6 +61,13 @@ class TestErrorEnvelopeFormat:
             json={"username": "alice", "password": "ValidPassword1!", "extra": "bad"},
         )
         assert response.status_code == 422
+        body = response.json()
+        self._assert_error_or_detail(body)
+        if "error" in body:
+            assert body["error"]["code"] == "VALIDATION_ERROR"
+        else:
+            assert isinstance(body["detail"], list)
+            assert body["detail"][0]["type"] == "extra_forbidden"
 
     async def test_error_envelope_has_code_and_message_fields(
         self, http_client
@@ -81,6 +108,13 @@ class TestErrorEnvelopeFormat:
         )
         # FastAPI returns 422 for unparseable JSON
         assert response.status_code in (400, 422)
+        body = response.json()
+        self._assert_error_or_detail(body)
+        if "error" in body:
+            assert isinstance(body["error"]["code"], str)
+            assert isinstance(body["error"]["message"], str)
+        else:
+            assert isinstance(body["detail"], list)
 
 
 class TestMiddlewarePreservesSuccessResponse:

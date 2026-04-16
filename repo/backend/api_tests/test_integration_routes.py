@@ -19,6 +19,7 @@ async def test_list_clients_with_auth_returns_200(http_client, admin_headers):
 async def test_list_clients_non_admin_returns_403(http_client, librarian_headers):
     resp = await http_client.get("/api/v1/integrations/", headers=librarian_headers)
     assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_PERMISSION"
 
 
 async def test_create_client_requires_admin_permission(http_client, librarian_headers):
@@ -28,6 +29,7 @@ async def test_create_client_requires_admin_permission(http_client, librarian_he
         headers=librarian_headers,
     )
     assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_PERMISSION"
 
 
 async def test_create_client_with_admin_returns_201(http_client, admin_headers):
@@ -58,6 +60,7 @@ async def test_rotate_key_requires_admin(http_client, librarian_headers, admin_h
         headers=librarian_headers,
     )
     assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_PERMISSION"
 
 
 async def test_rotate_and_commit_key_succeeds_as_admin(http_client, admin_headers):
@@ -122,6 +125,7 @@ async def test_emit_event_requires_admin_permission(http_client, librarian_heade
         json={"event_type": "resource.imported", "payload": {"resource_id": "abc"}},
     )
     assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_PERMISSION"
 
 
 async def test_deactivate_client_with_admin_returns_204(http_client, admin_headers):
@@ -152,6 +156,7 @@ async def test_deactivate_client_requires_admin(http_client, librarian_headers, 
         headers=librarian_headers,
     )
     assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_PERMISSION"
 
 
 async def test_retry_events_returns_result(http_client, admin_headers):
@@ -171,6 +176,7 @@ async def test_list_events_requires_admin_permission(http_client, librarian_head
         headers=librarian_headers,
     )
     assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "INSUFFICIENT_PERMISSION"
 
 
 async def test_create_client_empty_name_returns_422(http_client, admin_headers):

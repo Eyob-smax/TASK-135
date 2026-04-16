@@ -3,6 +3,8 @@
 A fully offline Windows 11 desktop application for K-12 organizations to manage
 reading resources, physical inventory, and administrative operations.
 
+Project type: desktop application with local backend API.
+
 ---
 
 ## Stack
@@ -82,7 +84,82 @@ cd repo
 docker compose up app
 ```
 
-The application starts the embedded FastAPI service on `http://127.0.0.1:8765`. The PyQt UI runs in offscreen mode inside the container; for native Windows use, run the application directly with Python 3.10.
+> **Note:** `docker compose` (V2 plugin) is the canonical command. If you are
+> on an older Docker installation that only ships the standalone binary, use
+> `docker-compose up app` instead.
+
+The application starts the embedded FastAPI service on `http://127.0.0.1:8765`.
+
+## Desktop Launch Method (Acceptance)
+
+For acceptance and verification, launch only through Docker:
+
+```bash
+cd repo
+docker compose up app
+```
+
+This starts the desktop backend stack in a Docker-contained runtime and avoids
+host-local dependency installation.
+
+## Access Method
+
+- API base URL: `http://127.0.0.1:8765`
+- API health probe for signed integrations: `GET /api/v1/integrations/inbound/status` (requires HMAC headers)
+- Interactive API docs are intentionally disabled in runtime (`openapi_url=None`, `docs_url=None`, `redoc_url=None`).
+
+## Verification Method
+
+After startup, verify behavior with explicit API checks:
+
+```bash
+# 1) Login as administrator
+curl -s -X POST http://127.0.0.1:8765/api/v1/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"username":"admin_user","password":"SecurePassword1!"}'
+
+# 2) Use returned token to verify identity
+curl -s http://127.0.0.1:8765/api/v1/auth/whoami \
+    -H "Authorization: Bearer <TOKEN_FROM_LOGIN>"
+
+# 3) Verify admin-only endpoint access
+curl -s http://127.0.0.1:8765/api/v1/admin/audit/events/ \
+    -H "Authorization: Bearer <TOKEN_FROM_LOGIN>"
+```
+
+Expected verification outcomes:
+- Login returns HTTP 200 with a token.
+- whoami returns HTTP 200 and includes roles/scopes.
+- Admin audit endpoint returns HTTP 200 for administrator credentials.
+
+Desktop UI verification (Docker acceptance):
+- Confirm the app container starts without crash loops.
+- Confirm authentication flow by completing API login and whoami checks above.
+- Confirm admin workflow reachability by calling `/api/v1/admin/audit/events/`.
+- Confirm shutdown behavior by stopping the container and verifying clean exit.
+
+## Demo Credentials
+
+For Docker acceptance/testing environments, use the following credentials:
+
+| Role | Username | Password |
+|---|---|---|
+| Administrator | admin_user | SecurePassword1! |
+| Librarian | librarian_user | SecurePassword1! |
+| Reviewer | reviewer_user | SecurePassword1! |
+| Teacher | testuser | SecurePassword1! |
+| Counselor | counselor_user | SecurePassword1! |
+
+Notes:
+- If a role account is not present in your dataset, create it through admin user management and assign the corresponding role.
+- `testuser` is the baseline authenticated account used by API tests.
+
+## Environment Rules (Strict)
+
+- Run and validate through Docker services only.
+- Do not use host-local runtime installation steps (`npm install`, `pip install`, `apt-get`) for acceptance runs.
+- Do not perform manual DB setup on host for acceptance runs.
+- Use `docker-compose`/`docker compose` workflows as the execution path.
 
 ---
 
@@ -92,15 +169,17 @@ Tests are run exclusively through the Docker container. Do not invoke pytest dir
 
 ```bash
 cd repo
-./run_tests.sh              # Default backend suite (api + backend unit dirs)
-./run_tests.sh unit         # Backend unit tests only
+./run_tests.sh              # Default backend suite (api + backend unit dirs; excludes ui)
+./run_tests.sh unit         # Backend unit tests only (excludes ui)
 ./run_tests.sh api          # API/integration tests only
+./run_tests.sh ui           # UI widget tests only
 ./run_tests.sh --cov        # Enable coverage reporting + fail-under gate
 ./run_tests.sh -k "auth"    # Run tests matching a keyword (forwarded to pytest)
 ```
 
-The default run excludes `backend/unit_tests/ui/` because those tests depend on
-Qt widget/runtime conditions that are not part of the backend acceptance path.
+The default run excludes `backend/unit_tests/ui/` to keep the main Docker
+acceptance path stable in headless environments. UI tests are still available
+via `./run_tests.sh ui`.
 
 ### Test layout
 
